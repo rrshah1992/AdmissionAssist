@@ -140,5 +140,5 @@ def login_page():
         ):
             ui.image('/assets/login-hero.jpg').style('width: 100%; height: 100%; object-fit: cover;')
 
-#ui.run()
-ui.run(on_air=True)
+#ui.run(port=8080, on_air=True)
+ui.run(port=8080)
