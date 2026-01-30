@@ -1,0 +1,548 @@
+from nicegui import ui # type: ignore
+from datetime import datetime
+# simple dummy options; change as needed
+BOARD_OPTIONS = ['CBSE', 'IB', 'State Board']
+SUBJECT_OPTIONS = ['Mathematics', 'Physics', 'Chemistry', 'English']
+
+
+
+@ui.page('/config')
+def config_page():
+    """Average / Normalisation configuration page."""
+    ui.colors(primary='#007878')
+    # in-memory lists of saved rows for this session
+    # LEFT table: board + score fields
+    rows_avg = []              # {'board', 'transcript', 'formula'}
+    # RIGHT table: board + subject mapping
+    rows_board_subject = []    # {'board', 'subject'}
+    rows_norm = []             # {'board', 'modifier'}
+
+    def save_configuration():
+        # TODO: actual save logic (API / file / DB)
+        now = datetime.now().strftime('%d %b %Y, %I:%M %p')
+        last_saved_label.text = f'Last saved · {now}'
+        ui.notify('Configuration saved')
+
+    # ------------------------------------------------------------------ #
+    # TITLE BAR: logo + product title | user chip + logout
+    # ------------------------------------------------------------------ #
+    with ui.element('div').classes('app-header'):
+        with ui.element('div').classes('app-header-inner'):
+
+            # LEFT
+            with ui.row().style('align-items: center; gap: 12px;'):
+                ui.image('/assets/plaksha-logo.png').style('height: 44px; width: 200px;')
+
+            # CENTER
+            ui.label('Score Calculation Manager').style('font-size: 28px; font-weight: 700; justify-self: center; text-align: center;')
+
+            # RIGHT
+            with ui.row().style('justify-content: flex-end; align-items: center; gap: 10px;'):
+                with ui.row().style(
+                    'align-items: center; gap: 8px; padding: 6px 10px; '
+                    'border: 1px solid #e6e6e6; border-radius: 999px;'
+                ):
+                    ui.avatar().props('icon=person').style('width: 28px; height: 28px;')
+                    ui.label('Admin User').style('font-size: 13px; font-weight: 600;')
+
+                ui.button(
+                    'Logout',
+                    icon='logout',
+                    on_click=lambda: ui.run_javascript("window.location.href='./'"),
+                ).props('outline').style('border-radius: 10px; padding: 6px 12px; font-size: 13px;')
+    
+    
+    with ui.column().classes('page-canvas').style('width: 100%; padding: 6px 22px; gap: 6px;'):
+
+
+
+
+
+        # ------------------------------------------------------------------ #
+        # TOP TABS + SAVE ACTION (tabs centered, save on right)
+        # ------------------------------------------------------------------ #
+        with ui.element('div').style(
+            'width: 100%; display: grid; grid-template-columns: 1fr auto 1fr; '
+            'align-items: center; margin-top: 8px; padding-right: 20px;'
+        ):
+
+            # LEFT SPACER (keeps tabs centered)
+            ui.element('div')
+
+            # CENTER: Tabs
+            with ui.element('div').classes('tabs-tile'):
+                with ui.tabs().style('max-width: 720px;') as tabs:
+                    avg_tab = ui.tab('Average calculation')
+                    norm_tab = ui.tab('Normalisation')
+
+            # RIGHT: Primary Save button
+            with ui.column().style('align-items: flex-end; gap: 2px;'):
+
+                last_saved_label = ui.label('Not saved yet').style('font-size: 11px; color: #666;')
+
+                def save_configuration():
+                    now = datetime.now().strftime('%d %b %Y, %I:%M %p')
+                    last_saved_label.text = f'Last saved · {now}'
+                    ui.notify('Configuration saved')
+
+                ui.button(
+                    'Save configuration',
+                    on_click=save_configuration,
+                ).classes('btn-primary rounded-12')
+
+
+        # ------------------------------------------------------------------ #
+        # TAB CONTENTS                                                      #
+        # ------------------------------------------------------------------ #
+        with ui.tab_panels(tabs, value=avg_tab).style(
+            'width: 100%; height: 100%;'
+        ):
+
+            # =============================================================== #
+            # TAB 1: AVERAGE CALCULATION                                     #
+            # =============================================================== #
+            with ui.tab_panel(avg_tab):
+
+                # Wrap both tables in a single row
+                with ui.row().style(
+                    'width: 100%; align-items: stretch; gap: 24px; margin-top: 6px;'
+                ):
+
+                    
+                    # ======================= LEFT TABLE ==================== #
+                    with ui.card().classes('tile tile-fixed').style(
+                        'flex: 1; min-width: 0; width: 100%; padding: 16px; height: calc(100vh - 290px);'
+                    ):
+                        with ui.column().style('width: 100%; height: 100%; display: flex; flex-direction: column; gap: 10px;'):
+
+                            ui.label('Score calculation formula').style('font-size: 16px; font-weight: 600;')
+
+                            # HEADER ROW (labels + add for Board)
+                            with ui.row().style(
+                                'width: 100%; font-size: 13px; font-weight: 600; '
+                                'color: #555; align-items: center;'
+                            ):
+                                with ui.row().style(
+                                    'min-width: 180px; align-items: center; gap: 6px;'
+                                ):
+                                    ui.label('Board')
+                                    ui.button(
+                                        'Add new',
+                                        on_click=lambda: ui.notify('Add board (stub)'),
+                                    ).props('flat dense').style('font-size: 11px;')
+
+                                ui.label('Score as on transcript').style(
+                                    'flex: 1;'
+                                )
+                                ui.label('Score to consider').style(
+                                    'flex: 1;'
+                                )
+                                ui.label('')  # placeholder for Save column
+
+                            # INPUT ROW + SAVE BUTTON (same line)
+                            with ui.row().style(
+                                'width: 100%; gap: 12px; align-items: flex-end;'
+                            ):
+                                board_select = ui.select(
+                                    BOARD_OPTIONS,
+                                    value=BOARD_OPTIONS[0],
+                                    with_input=False,
+                                ).style('min-width: 170px;')
+
+                                transcript_input = ui.input(
+                                    placeholder='e.g. Class 12 Physics marks',
+                                ).style('flex: 1;')
+
+                                formula_input = ui.input(
+                                    placeholder='e.g. (marks / max_marks) * 100',
+                                ).style('flex: 1;')
+
+                                # Save logic for LEFT table
+                                def save_current_row() -> None:
+                                    rows_avg.append(
+                                        {
+                                            'board': board_select.value,
+                                            'transcript': transcript_input.value or '',
+                                            'formula': formula_input.value or '',
+                                        }
+                                    )
+                                    transcript_input.value = ''
+                                    formula_input.value = ''
+                                    render_rows_avg()
+
+                                ui.button('Add', on_click=save_current_row) \
+                                    .props('outline') \
+                                    .classes('rounded-12') \
+                                    .style('min-width: 90px;')
+
+
+                            # CONTAINER FOR SAVED ROWS (Average)
+                            table_container_avg = ui.column().classes('tile-body').style('width: 100%; gap: 6px; margin-top: 8px;')
+
+                            # --- helpers for average table actions --------------- #
+                            def delete_row_avg(index: int) -> None:
+                                rows_avg.pop(index)
+                                render_rows_avg()
+
+                            def open_edit_dialog_avg(index: int) -> None:
+                                """Open dialog to edit an existing average row."""
+                                row = rows_avg[index]
+
+                                with ui.dialog() as dialog, ui.card().style(
+                                    'min-width: 480px;'
+                                ):
+                                    ui.label('Edit configuration row').style(
+                                        'font-size: 16px; font-weight: 600;'
+                                    )
+
+                                    edit_board = ui.select(
+                                        BOARD_OPTIONS,
+                                        value=row['board'],
+                                        with_input=False,
+                                    )
+                                    edit_transcript = ui.input(
+                                        label='Score as on transcript',
+                                        value=row['transcript'],
+                                    )
+                                    edit_formula = ui.input(
+                                        label='Score to consider',
+                                        value=row['formula'],
+                                    )
+
+                                    with ui.row().style(
+                                        'justify-content: flex-end; gap: 8px; '
+                                        'margin-top: 12px;'
+                                    ):
+                                        ui.button(
+                                            'Cancel',
+                                            on_click=dialog.close,
+                                        ).props('flat')
+
+                                        def save_edit() -> None:
+                                            rows_avg[index] = {
+                                                'board': edit_board.value,
+                                                'transcript': edit_transcript.value or '',
+                                                'formula': edit_formula.value or '',
+                                            }
+                                            dialog.close()
+                                            render_rows_avg()
+
+                                        ui.button(
+                                            'Save changes',
+                                            on_click=save_edit,
+                                        ).classes('btn-primary rounded-12')
+
+                                dialog.open()
+
+                            def render_rows_avg() -> None:
+                                """Rebuild the table of saved average rows."""
+                                table_container_avg.clear()
+                                if not rows_avg:
+                                    with table_container_avg:
+                                        ui.label('No rules added yet. Use “Add” above to save your first score calculation rule.').style(
+                                            'font-size: 13px; color: #777; '
+                                            'margin-top: 4px;'
+                                        )
+                                    return
+
+                                with table_container_avg:
+                                    for i, row in enumerate(rows_avg):
+                                        with ui.row().style(
+                                            'width: 100%; gap: 12px; '
+                                            'align-items: center;'
+                                        ):
+                                            ui.label(row['board']).style(
+                                                'min-width: 180px;'
+                                            )
+                                            ui.label(row['transcript']).style('flex: 1;')
+                                            ui.label(row['formula']).style('flex: 1;')
+                                            ui.button(icon = 'edit', on_click=lambda idx=i: open_edit_dialog_avg(idx)) \
+                                            .props('outline dense') \
+                                            .classes('rounded-12')
+
+                                            ui.button(icon = 'delete', on_click=lambda idx=i: delete_row_avg(idx)) \
+                                            .props('outline dense') \
+                                            .classes('rounded-12') \
+                                            .style('border-color: #b00020; color: #b00020;')
+
+                            # initial empty table
+                            render_rows_avg()
+
+                            # Tile footer actions
+                            ui.label('Download a rule template, bulk upload rules, or export the latest configuration.').style(
+                                'font-size: 12px; color: #666; margin-top: 6px;'
+)
+                            with ui.row().classes('tile-footer'):
+
+
+                                ui.button('Config template', icon='download', on_click=...) \
+                                .props('outline') \
+                                .classes('btn-secondary rounded-12')
+
+                                ui.button('Upload config', icon='upload', on_click=...) \
+                                .props('outline') \
+                                .classes('btn-secondary rounded-12')
+
+                                ui.button('Download current config', icon='download', on_click=...) \
+                                .props('outline') \
+                                .classes('btn-secondary rounded-12')
+
+
+
+                    # ====================== RIGHT TABLE ==================== #
+                    with ui.card().classes('tile tile-fixed').style(
+                        'flex: 1; min-width: 0; width: 100%; padding: 16px;height: calc(100vh - 290px)'
+                    ):
+                        with ui.column().style('width: 100%; height: 100%; display: flex; flex-direction: column; gap: 10px;'):
+
+                            ui.label('Subject selection by board').style('font-size: 16px; font-weight: 600;')
+
+
+                            # HEADER ROW (RIGHT TABLE) ✅ aligned to columns
+                            with ui.row().style(
+                                'width: 100%; font-size: 13px; font-weight: 600; color: #555; align-items: center;'
+                            ):
+                                with ui.row().style('min-width: 180px; align-items: center; gap: 6px;'):
+                                    ui.label('Board')
+                                    ui.button('Add new', on_click=lambda: ui.notify('Add board (stub)')) \
+                                        .props('flat dense').style('font-size: 11px;')
+
+                                with ui.row().style('flex: 1; min-width: 0; align-items: center; gap: 6px;'):
+                                    ui.label('Subject')
+                                    ui.button('Add new', on_click=lambda: ui.notify('Add subject (stub)')) \
+                                        .props('flat dense').style('font-size: 11px;')
+
+                                ui.label('').style('width: 80px;')  # placeholder aligns with + button
+
+                            # INPUT ROW + SAVE BUTTON (RIGHT TABLE)  ✅ all in one line
+                            with ui.row().style(
+                                'width: 100%; gap: 12px; align-items: center; flex-wrap: nowrap;'
+                            ):
+                                bs_board_select = ui.select(
+                                    BOARD_OPTIONS,
+                                    value=BOARD_OPTIONS[0],
+                                    with_input=False,
+                                ).style('min-width: 180px; flex: 0 0 180px;')
+
+                                bs_subject_select = ui.select(
+                                    SUBJECT_OPTIONS,
+                                    value=SUBJECT_OPTIONS[0],
+                                    with_input=False,
+                                ).style('flex: 1; min-width: 0;')
+
+                                def save_board_subject_row() -> None:
+                                    rows_board_subject.append(
+                                        {'board': bs_board_select.value, 'subject': bs_subject_select.value}
+                                    )
+                                    render_rows_board_subject()
+
+                                ui.button('Add', on_click=save_board_subject_row) \
+                                    .props('outline') \
+                                    .classes('rounded-12') \
+                                    .style('min-width: 90px;')
+
+
+                            # CONTAINER FOR SAVED ROWS (Board–Subject)
+                            table_container_board_subject = ui.column().classes('tile-body').style('width: 100%; gap: 6px; margin-top: 8px;')
+
+                            def delete_row_board_subject(index: int) -> None:
+                                rows_board_subject.pop(index)
+                                render_rows_board_subject()
+
+                            def open_edit_dialog_board_subject(index: int) -> None:
+                                row = rows_board_subject[index]
+
+                                with ui.dialog() as dialog, ui.card().style(
+                                    'min-width: 420px;'
+                                ):
+                                    ui.label('Edit board–subject row').style(
+                                        'font-size: 16px; font-weight: 600;'
+                                    )
+
+                                    edit_board = ui.select(
+                                        BOARD_OPTIONS,
+                                        value=row['board'],
+                                        with_input=False,
+                                    )
+                                    edit_subject = ui.select(
+                                        SUBJECT_OPTIONS,
+                                        value=row['subject'],
+                                        with_input=False,
+                                    )
+
+                                    with ui.row().style(
+                                        'justify-content: flex-end; gap: 8px; '
+                                        'margin-top: 12px;'
+                                    ):
+                                        ui.button(
+                                            'Cancel',
+                                            on_click=dialog.close,
+                                        ).props('flat')
+
+                                        def save_edit() -> None:
+                                            rows_board_subject[index] = {
+                                                'board': edit_board.value,
+                                                'subject': edit_subject.value,
+                                            }
+                                            dialog.close()
+                                            render_rows_board_subject()
+
+                                        ui.button(
+                                            'Save changes',
+                                            on_click=save_edit,
+                                        ).classes('btn-primary rounded-12')
+
+                                dialog.open()
+
+                            def render_rows_board_subject() -> None:
+                                table_container_board_subject.clear()
+                                if not rows_board_subject:
+                                    with table_container_board_subject:
+                                        ui.label('No rules added yet. Use “Add” above to save board–subject mapping.').style(
+                                            'font-size: 13px; color: #777; '
+                                            'margin-top: 4px;'
+                                        )
+                                    return
+
+                                with table_container_board_subject:
+                                    for i, row in enumerate(rows_board_subject):
+                                        with ui.row().style(
+                                            'width: 100%; gap: 12px; '
+                                            'align-items: center;'
+                                        ):
+                                            ui.label(row['board']).style(
+                                                'min-width: 180px;'
+                                            )
+                                            ui.label(row['subject']).style(
+                                                'min-width: 180px;'
+                                            )
+
+                                            ui.button(icon = 'edit', on_click=lambda idx=i: open_edit_dialog_board_subject(idx)) \
+                                            .props('outline dense') \
+                                            .classes('rounded-12')
+
+                                            ui.button(icon = 'delete', on_click=lambda idx=i: delete_row_board_subject(idx)) \
+                                            .props('outline dense') \
+                                            .classes('rounded-12') \
+                                            .style('border-color: #b00020; color: #b00020;')
+
+
+                            render_rows_board_subject()
+
+                            ui.label('Download a rule template, bulk upload rules, or export the latest configuration.').style(
+                                'font-size: 12px; color: #666; margin-top: 6px;')
+
+                            # Tile footer actions
+                            with ui.row().classes('tile-footer'):
+                                ui.button('Config template', icon='download', on_click=...) \
+                                .props('outline') \
+                                .classes('btn-secondary rounded-12')
+
+                                ui.button('Upload config', icon='upload', on_click=...) \
+                                .props('outline') \
+                                .classes('btn-secondary rounded-12')
+
+                                ui.button('Download current config', icon='download', on_click=...) \
+                                .props('outline') \
+                                .classes('btn-secondary rounded-12')
+
+
+
+
+            # =============================================================== #
+            # TAB 2: NORMALISATION CONFIGURATION                             #
+            # (unchanged)                                                    #
+            # =============================================================== #
+            with ui.tab_panel(norm_tab):
+
+                # Single tile centered, same height logic as Average tiles
+                with ui.card().classes('tile tile-fixed').style(
+                    'width: 100%; max-width: 760px; padding: 16px; height: calc(100vh - 290px); margin: 12px auto 0;'
+                ):
+                    # IMPORTANT: flex column so footer stays at bottom
+                    with ui.column().style(
+                        'width: 100%; height: 100%; display: flex; flex-direction: column; gap: 10px;'
+                    ):
+
+                        # HEADER ROW (match left tile structure)
+                        with ui.row().style(
+                            'width: 100%; font-size: 13px; font-weight: 600; color: #555; align-items: center;'
+                        ):
+                            with ui.row().style('min-width: 180px; align-items: center; gap: 6px;'):
+                                ui.label('Board')
+                                ui.button('Add new', on_click=lambda: ui.notify('Add board (stub)')) \
+                                    .props('flat dense').style('font-size: 11px;')
+
+                            ui.label('Modification to calculated average').style('flex: 1; min-width: 0;')
+                            ui.label('').style('width: 80px;')  # aligns with + button
+
+                        # INPUT ROW + + BUTTON ON SAME LINE
+                        with ui.row().style('width: 100%; gap: 12px; align-items: flex-end; flex-wrap: nowrap;'):
+                            norm_board_select = ui.select(BOARD_OPTIONS, value=BOARD_OPTIONS[0], with_input=False) \
+                                .style('min-width: 180px; flex: 0 0 180px;')
+
+                            modifier_input = ui.input(
+                                placeholder='e.g. +5, *0.9, cap at 95, etc.'
+                            ).style('flex: 1; min-width: 0;')
+
+                            def save_norm_row() -> None:
+                                rows_norm.append({'board': norm_board_select.value, 'modifier': modifier_input.value or ''})
+                                modifier_input.value = ''
+                                render_rows_norm()
+                           
+                            ui.button('Add', on_click=save_norm_row) \
+                                .props('outline') \
+                                .classes('rounded-12') \
+                                .style('min-width: 90px;')
+
+                        # ✅ SAVED ROWS AREA: ONLY THIS SCROLLS
+                        table_container_norm = ui.column().classes('tile-body').style(
+                            'flex: 1; min-height: 0; width: 100%; overflow-y: auto; gap: 6px; margin-top: 8px; padding-right: 4px;'
+                        )
+
+                        def delete_row_norm(index: int) -> None:
+                            rows_norm.pop(index)
+                            render_rows_norm()
+
+                        def render_rows_norm() -> None:
+                            table_container_norm.clear()
+                            with table_container_norm:
+                                if not rows_norm:
+                                    ui.label('No rows saved yet.').style('font-size: 13px; color: #777; margin-top: 4px;')
+                                    return
+
+                                for i, row in enumerate(rows_norm):
+                                    with ui.row().style('width: 100%; gap: 12px; align-items: center;'):
+                                        ui.label(row['board']).style('min-width: 180px;')
+                                        ui.label(row['modifier']).style('flex: 1; min-width: 0;')
+
+
+                                        
+                                        ui.button(icon = 'edit', on_click=lambda idx=i: ui.notify(f'Edit {idx} (stub)')) \
+                                        .props('outline dense') \
+                                        .classes('rounded-12')
+
+                                        ui.button(icon = 'delete', on_click=lambda idx=i: delete_row_norm(idx)) \
+                                        .props('outline dense') \
+                                        .classes('rounded-12') \
+                                        .style('border-color: #b00020; color: #b00020;')
+
+
+                        render_rows_norm()
+                        
+                        ui.label('Download a rule template, bulk upload rules, or export the latest configuration.').style(
+                            'font-size: 12px; color: #666; margin-top: 6px;')                        
+
+                        # FOOTER (same as Average left tile)
+                        with ui.row().classes('tile-footer'):
+                            ui.button('Config template', icon='download', on_click=...) \
+                            .props('outline') \
+                            .classes('btn-secondary rounded-12')
+
+                            ui.button('Upload config', icon='upload', on_click=...) \
+                            .props('outline') \
+                            .classes('btn-secondary rounded-12')
+
+                            ui.button('Download current config', icon='download', on_click=...) \
+                            .props('outline') \
+                            .classes('btn-secondary rounded-12')

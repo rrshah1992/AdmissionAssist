@@ -1,0 +1,12 @@
+# Ignore the virtual environment folder
+.venv/
+
+# Ignore pycache anywhere in the project (subfolders included)
+__pycache__/
+
+# Ignore compiled python files
+*.pyc
+
+# Ignore environment variables (passwords/secrets)
+.env
+.DS_Store
